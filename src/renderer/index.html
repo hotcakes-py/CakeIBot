@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: https://cdn.discordapp.com" />
+  <title>CakeIBot</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <!-- 1) IDIOMA -->
+  <main id="lang-screen" class="screen active">
+    <div class="lang-wrap">
+      <button id="btn-es" class="lang-btn es" type="button">
+        <span class="code">ES</span>
+        <span class="flag" aria-hidden="true">
+          <svg viewBox="0 0 60 40" width="96" height="64">
+            <clipPath id="r-es"><rect width="60" height="40" rx="7"/></clipPath>
+            <g clip-path="url(#r-es)">
+              <rect width="60" height="40" fill="#FFC400"/>
+              <rect width="60" height="10" fill="#C60B1E"/>
+              <rect y="30" width="60" height="10" fill="#C60B1E"/>
+            </g>
+            <rect width="60" height="40" rx="7" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.9"/>
+          </svg>
+        </span>
+        <span class="lang-name">Español</span>
+        <span class="lang-arrow">→</span>
+      </button>
+
+      <div class="lang-sep"></div>
+
+      <button id="btn-en" class="lang-btn en" type="button">
+        <span class="code">EN</span>
+        <span class="flag" aria-hidden="true">
+          <svg viewBox="0 0 60 40" width="96" height="64">
+            <clipPath id="r-uk"><rect width="60" height="40" rx="7"/></clipPath>
+            <g clip-path="url(#r-uk)">
+              <rect width="60" height="40" fill="#012169"/>
+              <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="8"/>
+              <path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" stroke-width="3"/>
+              <path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="13"/>
+              <path d="M30,0 V40 M0,20 H60" stroke="#C8102E" stroke-width="7"/>
+            </g>
+            <rect width="60" height="40" rx="7" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.9"/>
+          </svg>
+        </span>
+        <span class="lang-name">English</span>
+        <span class="lang-arrow">→</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- 2) ANIMACIÓN -->
+  <main id="anim-screen" class="screen">
+    <div class="anim-stage">
+      <div id="ball" class="ball"></div>
+      <h1 id="hello-text" class="hello">¡Hola!</h1>
+    </div>
+  </main>
+
+  <!-- 3) STACK -->
+  <main id="stack-screen" class="screen">
+    <div class="stack-col">
+      <h2 id="stack-title" class="stack-title">Elige un lenguaje para continuar</h2>
+      <div class="lang-wrap">
+        <button id="btn-js" class="lang-btn es" type="button">
+          <span class="code">JS</span>
+          <span class="flag" aria-hidden="true">
+            <svg viewBox="0 0 100 100" width="88" height="88">
+              <rect width="100" height="100" rx="20" fill="#F7DF1E"/>
+              <text x="50" y="70" font-size="44" font-weight="800" text-anchor="middle" fill="#000" font-family="Arial, sans-serif">JS</text>
+              <rect width="100" height="100" rx="20" fill="none" stroke="#fff" stroke-width="3" opacity="0.9"/>
+            </svg>
+          </span>
+          <span class="lang-name">JavaScript</span>
+          <span class="lang-arrow">→</span>
+        </button>
+
+        <div class="lang-sep"></div>
+
+        <button id="btn-py" class="lang-btn en" type="button">
+          <span class="code">PY</span>
+          <span class="flag logo" aria-hidden="true">
+            <img class="logo-img" src="assets/python-logo.svg" alt="Python" width="88" height="88" />
+          </span>
+          <span class="lang-name">Python</span>
+          <span class="lang-arrow">→</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 4) DASHBOARD: MIS BOTS -->
+  <main id="dash-screen" class="screen">
+    <div class="dash">
+      <header class="dash-head">
+        <button id="dash-back" class="ghost-btn round" type="button" title="←">←</button>
+        <h2 id="dash-title" class="dash-title">Mis bots</h2>
+        <button id="btn-help" class="ghost-btn round" type="button" title="?">?</button>
+        <button id="btn-new-bot" class="ghost-btn" type="button">+ <span data-ui="newBot">Nuevo</span></button>
+      </header>
+      <div id="project-grid" class="grid"></div>
+      <p id="dash-empty" class="empty" data-ui="empty">Sin bots todavía — crea el primero con + Nuevo</p>
+    </div>
+  </main>
+
+  <!-- 5) EDITOR -->
+  <main id="editor-screen" class="screen">
+    <div class="editor">
+      <header class="ed-top">
+        <button id="ed-back" class="ghost-btn round" type="button" title="←">←</button>
+        <button id="ed-botchip" class="bot-chip" type="button" title="Bot">
+          <img id="ed-avatar" class="avatar sm" alt="" />
+          <span class="bot-id"><strong id="ed-name">—</strong></span>
+        </button>
+        <span id="ed-stack" class="pill">JS</span>
+        <span class="top-div" aria-hidden="true"></span>
+        <button id="btn-undo" class="ghost-btn round ico" type="button" title="⟲" disabled>⟲</button>
+        <button id="btn-redo" class="ghost-btn round ico" type="button" title="⟳" disabled>⟳</button>
+        <span class="spacer"></span>
+        <span id="save-chip" class="save-chip" aria-live="polite">✓ <b data-ui="saveOk">Guardado</b></span>
+        <span id="flow-meta" class="flow-meta">0 · 0</span>
+        <span class="spacer"></span>
+        <span id="ed-status" class="status-pill off"><i></i><b data-ui="offline">Apagado</b></span>
+        <button id="btn-logs" class="ghost-btn" type="button">Logs</button>
+        <button id="btn-run" class="ghost-btn run" type="button">▶ <span data-ui="start">Encender</span></button>
+      </header>
+
+      <div class="ed-body">
+        <aside class="ed-lib">
+          <div class="pan-head">
+            <h4 data-ui="library">Módulos</h4>
+            <span id="lib-count" class="lib-count"></span>
+          </div>
+          <input id="mod-search" class="search" type="text" />
+          <div id="module-list"></div>
+          <div class="lib-row">
+            <button id="btn-import" class="ghost-btn mini" type="button"><span data-ui="import">Importar</span></button>
+            <button id="btn-newmod" class="ghost-btn mini" type="button">+ <span data-ui="newMod">Módulo</span></button>
+          </div>
+          <input id="import-file" type="file" accept=".json,.zip,application/json" hidden />
+        </aside>
+
+        <section class="ed-canvas-wrap">
+          <div id="canvas-hint" class="canvas-hint" data-ui="canvasHint">Añade módulos desde la izquierda · arrastra para mover · une ● → ● para conectar</div>
+          <div id="canvas" class="ed-canvas">
+            <svg id="edges"></svg>
+            <div id="vp"></div>
+            <div id="edge-tools"></div>
+
+            <div id="node-picker" class="np hidden">
+              <div class="np-head">
+                <span class="np-title" data-ui="addN">Añadir nodo</span>
+                <button id="np-close" class="np-x" type="button">✕</button>
+              </div>
+              <input id="np-q" class="search" type="text" />
+              <div id="np-list" class="np-list"></div>
+            </div>
+
+            <button id="cv-add" class="cv-fab" type="button" title="+">+</button>
+
+            <div class="cv-zoom">
+              <button id="z-out" class="cv-btn" type="button" title="−">−</button>
+              <span id="z-val">100%</span>
+              <button id="z-in" class="cv-btn" type="button" title="+">+</button>
+              <button id="z-fit" class="cv-btn" type="button" title="⤢">⤢</button>
+            </div>
+
+            <div class="cv-mini" title="Minimapa">
+              <canvas id="minimap" width="176" height="116"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <aside class="ed-conf">
+          <div class="pan-head">
+            <h4 data-ui="config">Configurar</h4>
+            <button id="cfg-close" class="np-x" type="button" title="✕">✕</button>
+          </div>
+          <div id="config-panel"><p class="empty" data-ui="noSel">Selecciona un bloque</p></div>
+        </aside>
+      </div>
+
+      <div id="logs" class="logs hidden">
+        <div class="logs-head">
+          <span>logs</span>
+          <span class="spacer"></span>
+          <button id="btn-copy-logs" class="ghost-btn mini" type="button"><span data-ui="copy">Copiar</span></button>
+          <button id="btn-export-code" class="ghost-btn mini" type="button"><span data-ui="exportCode">Ver código</span></button>
+          <button id="btn-clear-logs" class="ghost-btn mini" type="button">✕</button>
+        </div>
+        <div id="logs-body"></div>
+      </div>
+    </div>
+
+    <!-- Modal nuevo módulo -->
+    <div id="mod-modal" class="modal-back">
+      <div class="modal wide">
+        <h3 data-ui="newModTitle">Nuevo módulo</h3>
+        <label class="fld"><span data-ui="fName">Nombre</span><input id="nm-name" type="text" maxlength="32" /></label>
+        <label class="fld"><span data-ui="fDesc">Descripción</span><input id="nm-desc" type="text" maxlength="90" /></label>
+        <label class="fld"><span data-ui="fVars">Variables (una por línea: clave | etiqueta | valor)</span><textarea id="nm-vars" rows="3" placeholder="trigger | Palabra clave | hola"></textarea></label>
+        <label class="fld"><span data-ui="fCode">Código (usa MOD_CONFIG.clave)</span><textarea id="nm-code" rows="7" spellcheck="false"></textarea></label>
+        <div class="modal-row">
+          <button id="nm-export" class="ghost-btn" type="button"><span data-ui="export">Compartir (.json)</span></button>
+          <span class="spacer"></span>
+          <button id="nm-cancel" class="ghost-btn" type="button"><span data-ui="cancel">Cancelar</span></button>
+          <button id="nm-save" class="ghost-btn solid" type="button"><span data-ui="save">Guardar</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal ver código -->
+    <div id="code-modal" class="modal-back">
+      <div class="modal wide">
+        <h3>bot.<span id="code-ext">js</span></h3>
+        <pre id="code-view" class="code-view"></pre>
+        <div class="modal-row">
+          <span class="spacer"></span>
+          <button id="code-close" class="ghost-btn" type="button">✕</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal nuevo bot (global: se usa desde stack y dashboard) -->
+  <div id="bot-modal" class="modal-back">
+    <div class="modal">
+      <h3 data-ui="newBotTitle">Nuevo bot</h3>
+      <label class="fld"><span data-ui="fName">Nombre</span><input id="nb-name" type="text" maxlength="32" placeholder="MiBot" /></label>
+        <div id="nb-stack-row" class="fld"><span data-ui="fStack">Lenguaje</span>
+        <div class="seg">
+          <button id="nb-js" class="ghost-btn seg-btn active" type="button">JS</button>
+          <button id="nb-py" class="ghost-btn seg-btn" type="button">PY</button>
+        </div>
+      </div>
+        <label class="fld"><span data-ui="fToken">Token de Discord</span><input id="nb-token" type="password" placeholder="••••••" /></label>
+        <div id="nb-preview" class="bot-preview hidden">
+          <img id="nb-avatar" class="avatar" alt="" />
+          <div class="bot-id"><strong id="nb-botname">—</strong><span id="nb-botid">—</span></div>
+          <span id="nb-spin" class="spin"></span>
+        </div>
+        <p id="nb-error" class="form-error hidden"></p>
+      <div class="modal-row">
+        <button id="nb-cancel" class="ghost-btn" type="button"><span data-ui="cancel">Cancelar</span></button>
+        <button id="nb-create" class="ghost-btn solid" type="button"><span data-ui="create">Crear</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Documentación -->
+  <div id="docs-modal" class="modal-back">
+    <div class="modal wide docs">
+      <div class="seg docs-tabs">
+        <button id="tab-create" class="ghost-btn seg-btn active" type="button"><span data-ui="docsCreateTitle">Crear módulos</span></button>
+        <button id="tab-import" class="ghost-btn seg-btn" type="button"><span data-ui="docsImportTitle">Importar</span></button>
+      </div>
+      <div id="docs-create-body" class="docs-body"></div>
+      <div id="docs-import-body" class="docs-body hidden"></div>
+      <div class="modal-row">
+        <span class="spacer"></span>
+        <button id="docs-close" class="ghost-btn" type="button">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ficha del bot (info + token editable) -->
+  <div id="info-modal" class="modal-back">
+    <div class="modal wide">
+      <img id="ib-banner" class="banner hidden" alt="" />
+      <div class="info-row">
+        <img id="ib-avatar" class="avatar lg" alt="" />
+        <div class="bot-id"><h3 id="ib-name">—</h3><span id="ib-id">—</span></div>
+      </div>
+      <label class="fld"><span data-ui="fToken">Token de Discord</span><input id="ib-token" type="password" placeholder="••••••" /></label>
+      <p id="ib-error" class="form-error hidden"></p>
+      <div class="modal-row">
+        <span class="spacer"></span>
+        <button id="ib-cancel" class="ghost-btn" type="button"><span data-ui="cancel">Cancelar</span></button>
+        <button id="ib-save" class="ghost-btn solid" type="button"><span data-ui="save">Guardar</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
