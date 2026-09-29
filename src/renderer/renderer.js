@@ -425,7 +425,7 @@ const modActionJS = (id, c, C, perm, doIt, icon, doneWord) => {
     if (!_tm_${T}) { await ${C.sendJS(J(noTgt))}; }
     else if (!(${C.meJS} && ${C.meJS}.permissions.has('${perm}'))) { await ${C.sendJS(J(noPerm))}; }
     else { await ${doIt(`_tm_${T}`)}; await ${C.sendJS(`'${icon} ' + '<@' + _tm_${T}.id + '>' + ' ${doneWord}'`)}; }
-  } catch (e) { console.error('${id}:', e.message); }`;
+  } catch (e) { console.error('${id}:', e.message); try { await ${C.sendJS(`'⚠ ' + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + String((e && e.message) || e)`)}; } catch (_) {} }`;
 };
 // Acción de moderación PY
 const modActionPY = (id, c, C, perm, doIt, icon, doneWord) => {
@@ -450,7 +450,11 @@ const modActionPY = (id, c, C, perm, doIt, icon, doneWord) => {
     `        await ${doIt(`_tm_${T}`)}`,
     ...C.sendPYL(`${J(icon + ' ')} + _tm_${T}.mention + ${J(' ' + doneWord)}`).map(l => `        ${l}`),
     `except Exception as e:`,
-    `    print('${id}:', e)`
+    `    print('${id}:', e)`,
+    `    try:`,
+    ...C.sendPYL(`${J('⚠ ')} + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + str(e)`).map(l => `        ${l}`),
+    `    except Exception:`,
+    `        pass`
   ]);
 };
 // Acción de rol JS
@@ -479,7 +483,7 @@ const roleActionJS = (id, c, C, how) => {
     else if (!(${C.meJS} && ${C.meJS}.permissions.has('ManageRoles'))) { await ${C.sendJS(J(noPerm))}; }
     else if (!_rl_${T}) { await ${C.sendJS(J(noRol))}; }
     else { await _tm_${T}.roles.${verb}(_rl_${T}); await ${C.sendJS(`'✅ ' + '<@' + _tm_${T}.id + '>'`)}; }
-  } catch (e) { console.error('${id}:', e.message); }`;
+  } catch (e) { console.error('${id}:', e.message); try { await ${C.sendJS(`'⚠ ' + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + String((e && e.message) || e)`)}; } catch (_) {} }`;
 };
 // Acción de rol PY
 const roleActionPY = (id, c, C, how) => {
@@ -521,7 +525,11 @@ const roleActionPY = (id, c, C, how) => {
     `        await _tm_${T}.${verb}(_rl_${T})`,
     ...C.sendPYL(`'✅ ' + _tm_${T}.mention`).map(l => `        ${l}`),
     `except Exception as e:`,
-    `    print('${id}:', e)`
+    `    print('${id}:', e)`,
+    `    try:`,
+    ...C.sendPYL(`${J('⚠ ')} + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + str(e)`).map(l => `        ${l}`),
+    `    except Exception:`,
+    `        pass`
   ]);
 };
 // Contextos para acciones (disparador → acción)
