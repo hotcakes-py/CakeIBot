@@ -50,7 +50,10 @@ const STR = {
     tDup: 'Bloque duplicado', tUndone: 'Deshecho', tRedone: 'Rehecho',
     tNoUndo: 'Nada que deshacer', tNoRedo: 'Nada que rehacer',
     zIn: 'Acercar', zOut: 'Alejar', fitT: 'Ajustar al lienzo (Ctrl+0)',
-    addNTitle: 'Añadir nodo'
+    addNTitle: 'Añadir nodo',
+    advTitle: 'Opciones avanzadas (opcional)',
+    tplTitle: 'O empieza con una plantilla',
+    tplDone: 'Plantilla lista. Ponle tu token arriba para encenderlo.'
   },
   en: {
     hello: 'Hello!', stackTitle: 'Choose a language to continue',
@@ -99,7 +102,10 @@ const STR = {
     tDup: 'Block duplicated', tUndone: 'Undone', tRedone: 'Redone',
     tNoUndo: 'Nothing to undo', tNoRedo: 'Nothing to redo',
     zIn: 'Zoom in', zOut: 'Zoom out', fitT: 'Fit to canvas (Ctrl+0)',
-    addNTitle: 'Add node'
+    addNTitle: 'Add node',
+    advTitle: 'Advanced options (optional)',
+    tplTitle: 'Or start with a template',
+    tplDone: 'Template ready. Add your token above to start it.'
   }
 };
 let LANG = 'es';
@@ -151,6 +157,7 @@ function applyUI() {
   if (zf) { zf.title = STR[LANG].fitT; zf.setAttribute('aria-label', STR[LANG].fitT); }
   const caf = document.getElementById('cv-add');
   if (caf) { caf.title = STR[LANG].addNTitle; caf.setAttribute('aria-label', STR[LANG].addNTitle); }
+  if (typeof renderTemplates === 'function') renderTemplates();
   if (current) {
     document.getElementById('ed-stack').textContent = current.stack.toUpperCase();
     renderTopbar();
@@ -540,8 +547,8 @@ const BUILTINS = [
     name: { es: 'Responder', en: 'Auto-reply' },
     desc: { es: 'Responde cuando un mensaje contiene la palabra clave.', en: 'Replies when a message contains the keyword.' },
     schema: [
-      { key: 'trigger', label: { es: 'Palabra clave', en: 'Keyword' }, def: 'hola' },
-      { key: 'respuesta', label: { es: 'Respuesta', en: 'Reply' }, def: '¡Hola! Soy tu bot.' }
+      { key: 'trigger', label: { es: '¿A qué palabra responde?', en: 'Which word gets a reply?' }, def: 'hola', ph: 'hola', hint: { es: 'Cuando alguien escriba esa palabra, el bot contesta', en: 'When someone types that word, the bot replies' } },
+      { key: 'respuesta', label: { es: '¿Qué contesta?', en: 'What does it reply?' }, def: '¡Hola! Soy tu bot.', hint: { es: 'Puedes usar {autor} y se cambia por quien escribió', en: 'You can use {autor}, it becomes whoever wrote' } }
     ],
     js: (c, emb, acts, tag) => {
       const fire = `_fire_${tag}`;
@@ -570,8 +577,8 @@ ${leg ? `  if (${fire}) {\n${leg}\n  }\n` : ''}${actCode ? actCode + '\n' : ''}}
     name: { es: 'Bienvenida', en: 'Welcome' },
     desc: { es: 'Saluda a cada miembro nuevo en el canal.', en: 'Greets each new member in the channel.' },
     schema: [
-      { key: 'canal', label: { es: 'Nombre del canal', en: 'Channel name' }, def: 'general' },
-      { key: 'mensaje', label: { es: 'Mensaje (usa {usuario})', en: 'Message (use {usuario})' }, def: '¡Bienvenido/a {usuario}! 🎉' }
+      { key: 'canal', label: { es: '¿En qué canal?', en: 'Which channel?' }, def: 'general', ph: 'general', hint: { es: 'El nombre del canal, sin #', en: 'The channel name, without #' } },
+      { key: 'mensaje', label: { es: 'Mensaje de bienvenida', en: 'Welcome message' }, def: '¡Bienvenido/a {usuario}! 🎉', hint: { es: '{usuario} se cambia por el nuevo miembro', en: '{usuario} becomes the new member' } }
     ],
     js: (c, emb, acts, tag) => {
       const chActs = (acts || []).filter(a => ['embed', 'reply'].includes(a.mod.id));
@@ -612,8 +619,8 @@ ${otherCode ? otherCode + '\n' : ''}});`;
     name: { es: 'Moderación', en: 'Moderation' },
     desc: { es: 'Borra mensajes con palabras prohibidas y avisa.', en: 'Deletes messages with banned words and warns.' },
     schema: [
-      { key: 'palabras', label: { es: 'Palabras (separadas por coma)', en: 'Words (comma separated)' }, def: 'spam, insulto' },
-      { key: 'aviso', label: { es: 'Aviso', en: 'Warning' }, def: 'Ese lenguaje no está permitido.' }
+      { key: 'palabras', label: { es: 'Palabras prohibidas', en: 'Banned words' }, def: 'spam, insulto', ph: 'spam, insulto', hint: { es: 'Sepáralas con comas', en: 'Separate them with commas' } },
+      { key: 'aviso', label: { es: '¿Qué dice el bot cuando las usan?', en: 'What does the bot say when used?' }, def: 'Ese lenguaje no está permitido.' }
     ],
     js: (c) => `const BAD = ${J(c.palabras.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))};
 client.on('messageCreate', async (m) => {
@@ -647,15 +654,15 @@ client.on('messageCreate', async (m) => {
     name: { es: 'Comando /', en: 'Slash command' },
     desc: { es: 'Comando de barra con opciones, subcomandos, grupos, autocomplete, permisos y cooldown.', en: 'Slash command with options, subcommands, groups, autocomplete, permissions and cooldown.' },
     schema: [
-      { key: 'nombre', label: { es: 'Nombre (minúsculas, sin espacios)', en: 'Name (lowercase, no spaces)' }, def: 'hola' },
-      { key: 'descripcion', label: { es: 'Descripción', en: 'Description' }, def: 'Saluda' },
-      { key: 'opciones', label: { es: 'Opciones (nombre | tipo | descripción) — tipos: texto, numero, entero, usuario, canal', en: 'Options (name | type | description) — types: texto, numero, entero, usuario, canal' }, def: '', multiline: true },
-      { key: 'subcomandos', label: { es: 'Subcomandos (sub | descripción — o grupo/sub | descripción)', en: 'Subcommands (sub | description — or group/sub | description)' }, def: '', multiline: true },
-      { key: 'subopciones', label: { es: 'Opciones de subcomando (sub = nombre | tipo | descripción)', en: 'Subcommand options (sub = name | type | description)' }, def: '', multiline: true },
-      { key: 'autocomplete', label: { es: 'Autocomplete (opcion = valor1, valor2…)', en: 'Autocomplete (option = value1, value2…)' }, def: '', multiline: true },
-      { key: 'permisos', label: { es: 'Permisos (coma: administrador, gestionar_mensajes…)', en: 'Permissions (comma: administrator, manage_messages…)' }, def: '' },
-      { key: 'cooldown', label: { es: 'Cooldown en segundos (0 = ninguno)', en: 'Cooldown in seconds (0 = none)' }, def: '0' },
-      { key: 'respuesta', label: { es: 'Respuesta (usa {autor}, {opcion}, {subcomando}…)', en: 'Reply (use {autor}, {option}, {subcomando}…)' }, def: '¡Hola {autor}! 👋' }
+      { key: 'nombre', label: { es: 'Nombre del comando', en: 'Command name' }, def: 'hola', ph: 'kick', hint: { es: 'Minúsculas y sin espacios. En Discord sale como /nombre', en: 'Lowercase, no spaces. Shows as /name in Discord' } },
+      { key: 'descripcion', label: { es: 'Descripción corta', en: 'Short description' }, def: 'Saluda', ph: 'Expulsa a alguien' },
+      { key: 'opciones', label: { es: '¿Qué datos pide? (opcional)', en: 'What info does it ask for? (optional)' }, def: '', multiline: true, ph: 'usuario | usuario | ¿A quién?', hint: { es: 'Una línea por dato: nombre | tipo | pregunta. Tipos: texto, numero, entero, usuario, canal', en: 'One line per item: name | type | question. Types: texto, numero, entero, usuario, canal' } },
+      { key: 'subcomandos', label: { es: 'Subcomandos', en: 'Subcommands' }, def: '', multiline: true, adv: true, ph: 'ban | Banea a alguien', hint: { es: 'Una línea por subcomando: nombre | qué hace. Para grupos: grupo/nombre | qué hace', en: 'One line per subcommand: name | what it does. For groups: group/name | what it does' } },
+      { key: 'subopciones', label: { es: 'Datos de cada subcomando', en: 'Each subcommand data' }, def: '', multiline: true, adv: true, ph: 'ban = usuario | usuario | ¿A quién?', hint: { es: 'Formato: subcomando = nombre | tipo | pregunta', en: 'Format: subcommand = name | type | question' } },
+      { key: 'autocomplete', label: { es: 'Sugerencias al escribir', en: 'Suggestions while typing' }, def: '', multiline: true, adv: true, ph: 'color = rojo, azul, verde', hint: { es: 'Formato: dato = valor1, valor2. Discord muestra esas opciones', en: 'Format: item = value1, value2. Discord shows those options' } },
+      { key: 'permisos', label: { es: '¿Quién puede usarlo?', en: 'Who can use it?' }, def: '', adv: true, ph: 'administrador', hint: { es: 'Nombres como administrador, expulsar o gestionar_mensajes, separados con comas. Vacío = todos', en: 'Names like administrador, expulsar or gestionar_mensajes, comma separated. Empty = everyone' } },
+      { key: 'cooldown', label: { es: 'Esperar entre usos (segundos)', en: 'Wait between uses (seconds)' }, def: '0', adv: true, ph: '0', hint: { es: '0 = sin espera', en: '0 = no wait' } },
+      { key: 'respuesta', label: { es: '¿Qué responde?', en: 'What does it reply?' }, def: '¡Hola {autor}! 👋', hint: { es: 'Puedes usar {autor}, {usuario} y {subcomando}', en: 'You can use {autor}, {usuario} and {subcomando}' } }
     ],
     slashName: (c) => String(c.nombre || 'hola').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32) || 'cmd',
     // Definición que se registra en Discord (árbol de opciones + permisos)
@@ -806,14 +813,14 @@ async def _ac_${k0}_${k}(interaction: discord.Interaction, current: str):
     name: { es: 'Embed', en: 'Embed' },
     desc: { es: 'Responde con una tarjeta bonita (título, color, pie).', en: 'Replies with a rich card (title, color, footer).' },
     schema: [
-      { key: 'trigger', label: { es: 'Palabra clave', en: 'Keyword' }, def: 'info' },
+      { key: 'trigger', label: { es: '¿Qué palabra muestra la tarjeta?', en: 'Which word shows the card?' }, def: 'info', ph: 'info' },
       { key: 'titulo', label: { es: 'Título', en: 'Title' }, def: 'Mi bot' },
       { key: 'descripcion', label: { es: 'Descripción', en: 'Description' }, def: 'Hecho con CakeIBot' },
-      { key: 'color', label: { es: 'Color (rueda o hex)', en: 'Color (wheel or hex)' }, def: '#ffffff', color: true },
+      { key: 'color', label: { es: 'Color', en: 'Color' }, def: '#ffffff', color: true, hint: { es: 'Toca la rueda o pega un código como #ffffff', en: 'Use the wheel or paste a code like #ffffff' } },
       { key: 'autor', label: { es: 'Autor (opcional)', en: 'Author (optional)' }, def: '' },
-      { key: 'imagen', label: { es: 'Imagen grande URL (opcional)', en: 'Big image URL (optional)' }, def: '' },
-      { key: 'miniatura', label: { es: 'Miniatura URL (opcional)', en: 'Thumbnail URL (optional)' }, def: '' },
-      { key: 'campos', label: { es: 'Campos (nombre | valor, uno por línea)', en: 'Fields (name | value, one per line)' }, def: '', multiline: true },
+      { key: 'imagen', label: { es: 'Imagen grande URL (opcional)', en: 'Big image URL (optional)' }, def: '', ph: 'https://…' },
+      { key: 'miniatura', label: { es: 'Miniatura URL (opcional)', en: 'Thumbnail URL (optional)' }, def: '', ph: 'https://…' },
+      { key: 'campos', label: { es: 'Filas extra (opcional)', en: 'Extra rows (optional)' }, def: '', multiline: true, ph: 'Premios | 100 monedas', hint: { es: 'Una por línea: Título | texto', en: 'One per line: Title | text' } },
       { key: 'pie', label: { es: 'Pie (opcional)', en: 'Footer (optional)' }, def: '' }
     ],
     js: (c) => `client.on('messageCreate', async (m) => {
@@ -844,10 +851,10 @@ ${pyEmbedDecl(c, '    ', fillAutorPY)}
     name: { es: '!Comando', en: '!Command' },
     desc: { es: 'Comando clásico con prefijo (ej. !ping → pong).', en: 'Classic prefix command (e.g. !ping → pong).' },
     schema: [
-      { key: 'prefijo', label: { es: 'Prefijo', en: 'Prefix' }, def: '!' },
-      { key: 'comando', label: { es: 'Comando', en: 'Command' }, def: 'ping' },
-      { key: 'cooldown', label: { es: 'Cooldown en segundos (0 = ninguno)', en: 'Cooldown in seconds (0 = none)' }, def: '0' },
-      { key: 'respuesta', label: { es: 'Respuesta', en: 'Reply' }, def: 'pong 🏓' }
+      { key: 'prefijo', label: { es: 'Símbolo inicial', en: 'Starting symbol' }, def: '!', ph: '!', hint: { es: 'Casi siempre se deja !', en: 'Usually left as !' } },
+      { key: 'comando', label: { es: 'Palabra del comando', en: 'Command word' }, def: 'ping', ph: 'ping', hint: { es: 'Se usa así: !palabra', en: 'Used like: !word' } },
+      { key: 'cooldown', label: { es: 'Esperar entre usos (segundos)', en: 'Wait between uses (seconds)' }, def: '0', adv: true, ph: '0', hint: { es: '0 = sin espera', en: '0 = no wait' } },
+      { key: 'respuesta', label: { es: '¿Qué responde?', en: 'What does it reply?' }, def: 'pong 🏓' }
     ],
     js: (c, emb, acts, tag) => {
       const fire = `_fire_${tag}`;
@@ -896,8 +903,8 @@ ${cdLine}${leg ? `  if (${gate}) {\n${leg}\n  }\n` : ''}${actCode ? actCode + '\
     name: { es: 'Despedida', en: 'Farewell' },
     desc: { es: 'Despide a quien sale del servidor.', en: 'Says goodbye to leaving members.' },
     schema: [
-      { key: 'canal', label: { es: 'Nombre del canal', en: 'Channel name' }, def: 'general' },
-      { key: 'mensaje', label: { es: 'Mensaje (usa {usuario})', en: 'Message (use {usuario})' }, def: 'Adiós {usuario} 👋' }
+      { key: 'canal', label: { es: '¿En qué canal?', en: 'Which channel?' }, def: 'general', ph: 'general', hint: { es: 'El nombre del canal, sin #', en: 'The channel name, without #' } },
+      { key: 'mensaje', label: { es: 'Mensaje de despedida', en: 'Farewell message' }, def: 'Adiós {usuario} 👋', hint: { es: '{usuario} se cambia por el que se va', en: '{usuario} becomes who left' } }
     ],
     js: (c, emb, acts, tag) => {
       const chActs = (acts || []).filter(a => ['embed', 'reply'].includes(a.mod.id));
@@ -938,8 +945,8 @@ ${otherCode ? otherCode + '\n' : ''}});`;
     name: { es: 'Estado', en: 'Status' },
     desc: { es: 'Lo que el bot muestra que está haciendo.', en: 'What the bot shows it is doing.' },
     schema: [
-      { key: 'texto', label: { es: 'Texto', en: 'Text' }, def: 'con módulos' },
-      { key: 'tipo', label: { es: 'Tipo (jugando/viendo/escuchando)', en: 'Type (playing/watching/listening)' }, def: 'jugando' }
+      { key: 'texto', label: { es: '¿A qué está jugando?', en: 'What is it playing?' }, def: 'con módulos', ph: 'con módulos' },
+      { key: 'tipo', label: { es: 'Tipo de estado', en: 'Status type' }, def: 'jugando', ph: 'jugando', hint: { es: 'Solo vale: jugando, viendo o escuchando', en: 'Only: jugando, viendo or escuchando' } }
     ],
     js: (c) => {
       const map = { jugando: 'Playing', viendo: 'Watching', escuchando: 'Listening', compitiendo: 'Competing', playing: 'Playing', watching: 'Watching', listening: 'Listening', competing: 'Competing' };
@@ -964,9 +971,9 @@ except Exception as e:
     name: { es: 'Anuncio', en: 'Announcer' },
     desc: { es: 'Envía un mensaje a un canal cada X minutos.', en: 'Sends a message to a channel every X minutes.' },
     schema: [
-      { key: 'canal', label: { es: 'Nombre del canal', en: 'Channel name' }, def: 'anuncios' },
+      { key: 'canal', label: { es: '¿En qué canal?', en: 'Which channel?' }, def: 'anuncios', ph: 'anuncios', hint: { es: 'El nombre del canal, sin #', en: 'The channel name, without #' } },
       { key: 'mensaje', label: { es: 'Mensaje', en: 'Message' }, def: '📢 ¡Recordatorio!' },
-      { key: 'minutos', label: { es: 'Cada cuántos minutos', en: 'Every how many minutes' }, def: '60' }
+      { key: 'minutos', label: { es: '¿Cada cuántos minutos?', en: 'Every how many minutes?' }, def: '60', ph: '60' }
     ],
     js: (c) => {
       const min = Math.max(1, parseInt(c.minutos, 10) || 60);
@@ -1002,12 +1009,12 @@ _anuncio_${i}.start()`;
     name: { es: 'API', en: 'API' },
     desc: { es: 'Llama a una API web y responde con el dato ({valor}).', en: 'Calls a web API and replies with the data ({valor}).' },
     schema: [
-      { key: 'trigger', label: { es: 'Palabra clave', en: 'Keyword' }, def: 'precio' },
-      { key: 'url', label: { es: 'URL de la API (GET/POST JSON)', en: 'API URL (GET/POST JSON)' }, def: 'https://api.coindesk.com/v1/bpi/currentprice.json' },
-      { key: 'metodo', label: { es: 'Método (GET o POST)', en: 'Method (GET or POST)' }, def: 'GET' },
-      { key: 'cuerpo', label: { es: 'Cuerpo POST en JSON (opcional)', en: 'POST body as JSON (optional)' }, def: '', multiline: true },
-      { key: 'ruta', label: { es: 'Ruta del dato (ej. bpi.USD.rate)', en: 'Data path (e.g. bpi.USD.rate)' }, def: 'bpi.USD.rate' },
-      { key: 'plantilla', label: { es: 'Respuesta (usa {valor} y {autor})', en: 'Reply (use {valor} and {autor})' }, def: '💰 BTC: {valor}' }
+      { key: 'trigger', label: { es: '¿Qué palabra lo activa?', en: 'Which word triggers it?' }, def: 'precio', ph: 'precio' },
+      { key: 'url', label: { es: 'Dirección de la API', en: 'API address' }, def: 'https://api.coindesk.com/v1/bpi/currentprice.json' },
+      { key: 'metodo', label: { es: 'Método', en: 'Method' }, def: 'GET', ph: 'GET', hint: { es: 'Casi siempre GET', en: 'Almost always GET' } },
+      { key: 'cuerpo', label: { es: 'Datos extra para POST (opcional)', en: 'Extra POST data (optional)' }, def: '', multiline: true, adv: true, ph: '{"clave": "valor"}' },
+      { key: 'ruta', label: { es: '¿Qué dato quieres?', en: 'Which piece of data?' }, def: 'bpi.USD.rate', ph: 'bpi.USD.rate', hint: { es: 'La ruta dentro de la respuesta, con puntos. Ej: bpi.USD.rate', en: 'The path inside the answer, with dots. E.g. bpi.USD.rate' } },
+      { key: 'plantilla', label: { es: '¿Qué responde?', en: 'What does it reply?' }, def: '💰 BTC: {valor}', hint: { es: 'Usa {valor} donde va el dato y {autor} para quien preguntó', en: 'Use {valor} where the data goes and {autor} for who asked' } }
     ],
     js: (c) => {
       const method = String(c.metodo || 'GET').toUpperCase() === 'POST' ? 'POST' : 'GET';
@@ -1047,8 +1054,8 @@ _anuncio_${i}.start()`;
     name: { es: 'Foto/Archivo', en: 'Photo/File' },
     desc: { es: 'Envía una imagen o archivo (URL o ruta local).', en: 'Sends a photo or file (URL or local path).' },
     schema: [
-      { key: 'trigger', label: { es: 'Palabra clave', en: 'Keyword' }, def: 'foto' },
-      { key: 'fuente', label: { es: 'URL o ruta del archivo', en: 'File URL or path' }, def: 'https://picsum.photos/600' },
+      { key: 'trigger', label: { es: '¿Qué palabra lo activa?', en: 'Which word triggers it?' }, def: 'foto', ph: 'foto' },
+      { key: 'fuente', label: { es: 'Link o ruta del archivo', en: 'File link or path' }, def: 'https://picsum.photos/600', ph: 'https://…', hint: { es: 'Pega el link de una imagen o la ruta de un archivo de tu PC', en: 'Paste an image link or a file path from your PC' } },
       { key: 'texto', label: { es: 'Texto que acompaña (opcional)', en: 'Caption (optional)' }, def: '' }
     ],
     js: (c) => `client.on('messageCreate', async (m) => {
@@ -1083,7 +1090,7 @@ _anuncio_${i}.start()`;
     name: { es: 'Responder texto', en: 'Reply text' },
     desc: { es: 'Envía un texto (vale {autor}, {opcion}…).', en: 'Sends a text (supports {autor}, {option}…).' },
     schema: [
-      { key: 'texto', label: { es: 'Texto', en: 'Text' }, def: '', multiline: true }
+      { key: 'texto', label: { es: '¿Qué dice?', en: 'What does it say?' }, def: '', multiline: true }
     ],
     actJS(c, C) {
       if (!String(c.texto || '').trim()) return '';
@@ -1103,8 +1110,8 @@ _anuncio_${i}.start()`;
     name: { es: 'Expulsar', en: 'Kick' },
     desc: { es: 'Expulsa al objetivo (/kick con flujo).', en: 'Kicks the target (flow /kick).' },
     schema: [
-      { key: 'objetivo', label: { es: 'Objetivo (autor o mencionado)', en: 'Target (autor o mencionado)' }, def: 'mencionado' },
-      { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '' }
+      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'mencionado', ph: 'mencionado', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '', hint: { es: 'Si lo dejas vacío no pone nada', en: 'If empty it says nothing' } }
     ],
     actJS(c, C) { return modActionJS('kick', c, C, 'KickMembers', (tm) => c.motivo ? `${tm}.kick(${J(c.motivo)})` : `${tm}.kick()`, '👢', L('expulsado', 'kicked')); },
     actPY(c, C) { return modActionPY('kick', c, C, 'kick_members', (tm) => c.motivo ? `${tm}.kick(reason=${J(c.motivo)})` : `${tm}.kick()`, '👢', L('expulsado', 'kicked')); }
@@ -1114,9 +1121,9 @@ _anuncio_${i}.start()`;
     name: { es: 'Banear', en: 'Ban' },
     desc: { es: 'Banea al objetivo.', en: 'Bans the target.' },
     schema: [
-      { key: 'objetivo', label: { es: 'Objetivo (autor o mencionado)', en: 'Target (autor o mencionado)' }, def: 'mencionado' },
-      { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '' },
-      { key: 'borrar', label: { es: 'Borrar mensajes (días 0-7)', en: 'Delete messages (days 0-7)' }, def: '1' }
+      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'mencionado', ph: 'mencionado', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '', hint: { es: 'Si lo dejas vacío no pone nada', en: 'If empty it says nothing' } },
+      { key: 'borrar', label: { es: 'Borrar mensajes viejos (días)', en: 'Delete old messages (days)' }, def: '1', adv: true, ph: '1', hint: { es: 'Del 0 al 7. 0 = no borra nada', en: 'From 0 to 7. 0 = deletes nothing' } }
     ],
     actJS(c, C) {
       const d = Math.min(7, Math.max(0, parseInt(c.borrar, 10) || 0));
@@ -1138,9 +1145,9 @@ _anuncio_${i}.start()`;
     name: { es: 'Aislar', en: 'Timeout' },
     desc: { es: 'Aísla al objetivo X minutos.', en: 'Times out the target for X minutes.' },
     schema: [
-      { key: 'objetivo', label: { es: 'Objetivo (autor o mencionado)', en: 'Target (autor o mencionado)' }, def: 'mencionado' },
-      { key: 'minutos', label: { es: 'Minutos', en: 'Minutes' }, def: '10' },
-      { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '' }
+      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'mencionado', ph: 'mencionado', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'minutos', label: { es: '¿Cuántos minutos?', en: 'How many minutes?' }, def: '10', ph: '10' },
+      { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '', hint: { es: 'Si lo dejas vacío no pone nada', en: 'If empty it says nothing' } }
     ],
     actJS(c, C) {
       const m_ = Math.max(1, parseInt(c.minutos, 10) || 10);
@@ -1156,8 +1163,8 @@ _anuncio_${i}.start()`;
     name: { es: 'Dar rol', en: 'Add role' },
     desc: { es: 'Da un rol al objetivo.', en: 'Gives a role to the target.' },
     schema: [
-      { key: 'objetivo', label: { es: 'Objetivo (autor o mencionado)', en: 'Target (autor o mencionado)' }, def: 'autor' },
-      { key: 'rol', label: { es: 'Nombre del rol', en: 'Role name' }, def: '' }
+      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'autor', ph: 'autor', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'rol', label: { es: 'Nombre exacto del rol', en: 'Exact role name' }, def: '', ph: 'Miembro', hint: { es: 'Tiene que existir en tu servidor con ese mismo nombre', en: 'It must exist in your server with that exact name' } }
     ],
     actJS(c, C) { return roleActionJS('addrole', c, C, 'add'); },
     actPY(c, C) { return roleActionPY('addrole', c, C, 'add'); }
@@ -1167,8 +1174,8 @@ _anuncio_${i}.start()`;
     name: { es: 'Quitar rol', en: 'Remove role' },
     desc: { es: 'Quita un rol al objetivo.', en: 'Removes a role from the target.' },
     schema: [
-      { key: 'objetivo', label: { es: 'Objetivo (autor o mencionado)', en: 'Target (autor o mencionado)' }, def: 'autor' },
-      { key: 'rol', label: { es: 'Nombre del rol', en: 'Role name' }, def: '' }
+      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'autor', ph: 'autor', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'rol', label: { es: 'Nombre exacto del rol', en: 'Exact role name' }, def: '', ph: 'Miembro', hint: { es: 'Tiene que existir en tu servidor con ese mismo nombre', en: 'It must exist in your server with that exact name' } }
     ],
     actJS(c, C) { return roleActionJS('removerole', c, C, 'remove'); },
     actPY(c, C) { return roleActionPY('removerole', c, C, 'remove'); }
@@ -1179,8 +1186,8 @@ _anuncio_${i}.start()`;
     desc: { es: 'Envía botones o un menú desplegable y responde al usarlos.', en: 'Sends buttons or a dropdown and replies when used.' },
     schema: [
       { key: 'texto', label: { es: 'Texto del mensaje (opcional)', en: 'Message text (optional)' }, def: 'Elige una opción 👇' },
-      { key: 'botones', label: { es: 'Botones (etiqueta | id | respuesta)', en: 'Buttons (label | id | reply)' }, def: 'Rojo | rojo | ¡Elegiste rojo! ❤️', multiline: true },
-      { key: 'menu', label: { es: 'Menú (placeholder | id | opción1, opción2 | respuesta)', en: 'Menu (placeholder | id | option1, option2 | reply)' }, def: '', multiline: true }
+      { key: 'botones', label: { es: 'Botones (uno por línea)', en: 'Buttons (one per line)' }, def: 'Rojo | rojo | ¡Elegiste rojo! ❤️', multiline: true, hint: { es: 'Formato: Texto | id | respuesta. Ej: Rojo | rojo | ¡Elegiste rojo!', en: 'Format: Text | id | reply. E.g. Red | red | You picked red!' } },
+      { key: 'menu', label: { es: 'Menú desplegable (opcional)', en: 'Dropdown menu (optional)' }, def: '', multiline: true, hint: { es: 'Formato: Título | id | opción1, opción2 | respuesta. Usa {elegido} para lo que elijan', en: 'Format: Title | id | option1, option2 | reply. Use {elegido} for their pick' } }
     ],
     actJS(c, C) {
       const btns = parseButtons(c.botones), menus = parseMenus(c.menu);
@@ -1303,6 +1310,69 @@ document.getElementById('btn-py').addEventListener('click', () => { pendingStack
 
 // ---------- dashboard ----------
 let pendingStack = 'js';
+let pendingTemplate = null;
+// Plantillas de 1 clic: bots ya armados, sin tocar el editor
+const TEMPLATES = [
+  {
+    icon: '👋', name: { es: 'Bienvenida', en: 'Welcome' },
+    desc: { es: 'Saluda al que entra y despide al que se va', en: 'Greets who joins and farewells who leaves' },
+    make() {
+      const a = uid(), b = uid();
+      return {
+        nodes: [
+          { uid: a, modId: 'bienvenida', x: 80, y: 80, config: { canal: 'general', mensaje: '¡Bienvenido/a {usuario}! 🎉' } },
+          { uid: b, modId: 'despedida', x: 80, y: 300, config: { canal: 'general', mensaje: 'Adiós {usuario} 👋' } }
+        ], edges: []
+      };
+    }
+  },
+  {
+    icon: '🎉', name: { es: 'Diversión', en: 'Fun' },
+    desc: { es: 'Responde al hola y abraza con /abrazo', en: 'Replies to hello and hugs with /abrazo' },
+    make() {
+      const a = uid(), b = uid(), c = uid();
+      return {
+        nodes: [
+          { uid: a, modId: 'responder', x: 80, y: 80, config: { trigger: 'hola', respuesta: '¡Hola {autor}! 👋' } },
+          { uid: b, modId: 'slash', x: 420, y: 80, config: { nombre: 'abrazo', descripcion: 'Abraza a alguien', opciones: 'usuario | usuario | ¿A quién?', respuesta: '' } },
+          { uid: c, modId: 'reply', x: 420, y: 320, config: { texto: '¡{autor} abrazó a {usuario}! 🤗' } }
+        ], edges: [{ a: b, b: c }]
+      };
+    }
+  },
+  {
+    icon: '🛡️', name: { es: 'Moderación', en: 'Moderation' },
+    desc: { es: 'Borra insultos y expulsa con /kick', en: 'Deletes insults and kicks with /kick' },
+    make() {
+      const a = uid(), b = uid(), c = uid();
+      return {
+        nodes: [
+          { uid: a, modId: 'moderacion', x: 80, y: 80, config: { palabras: 'spam, insulto', aviso: 'Ese lenguaje no está permitido.' } },
+          { uid: b, modId: 'slash', x: 420, y: 80, config: { nombre: 'kick', descripcion: 'Expulsa a alguien', opciones: 'usuario | usuario | ¿A quién?', respuesta: '' } },
+          { uid: c, modId: 'kick', x: 420, y: 320, config: { objetivo: 'mencionado', motivo: '' } }
+        ], edges: [{ a: b, b: c }]
+      };
+    }
+  }
+];
+function renderTemplates() {
+  const row = document.getElementById('tpl-row');
+  if (!row) return;
+  row.innerHTML = '';
+  TEMPLATES.forEach(tp => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tpl-card';
+    const ico = document.createElement('div');
+    ico.className = 'tpl-ico'; ico.textContent = tp.icon;
+    const nm = document.createElement('strong');
+    nm.textContent = tp.name[LANG] || tp.name.es;
+    const ds = document.createElement('span');
+    ds.textContent = tp.desc[LANG] || tp.desc.es;
+    b.appendChild(ico); b.appendChild(nm); b.appendChild(ds);
+    b.addEventListener('click', () => { pendingTemplate = tp; pendingStack = 'js'; openBotModal(false); });
+    row.appendChild(b);
+  });
+}
 const botModal = document.getElementById('bot-modal');
 function openBotModal(hideStack) {
   document.getElementById('nb-js').classList.toggle('active', pendingStack === 'js');
@@ -1320,12 +1390,19 @@ document.getElementById('nb-create').addEventListener('click', () => {
   if (!name) { logLine(t('needName'), 'err'); return; }
   const token = document.getElementById('nb-token').value.trim();
   const p = { id: uid(), name, stack: pendingStack, token, botInfo: verifiedInfo && verifiedToken === token ? verifiedInfo : null, nodes: [], edges: [] };
+  const usedTpl = !!pendingTemplate;
+  if (pendingTemplate) {
+    const built = pendingTemplate.make();
+    p.nodes = built.nodes; p.edges = built.edges;
+    pendingTemplate = null;
+  }
   projects.push(p); persist();
   document.getElementById('nb-name').value = '';
   document.getElementById('nb-token').value = '';
   hidePreview();
   botModal.classList.remove('open');
   openProject(p.id);
+  if (usedTpl) toast(t('tplDone'));
 });
 document.getElementById('dash-back').addEventListener('click', () => show('stack-screen'));
 
@@ -1397,6 +1474,7 @@ function renderProjects() {
     });
     grid.appendChild(card);
   });
+  renderTemplates();
 }
 
 // ---------- editor ----------
@@ -2075,6 +2153,12 @@ function renderConfig() {
         : (v ? String(v).slice(0, 24) : '···');
     }
   };
+  const advBox = document.createElement('details');
+  advBox.className = 'cfg-adv';
+  const advSum = document.createElement('summary');
+  advSum.textContent = t('advTitle');
+  advBox.appendChild(advSum);
+  let advCount = 0;
   (mod.schema || []).forEach(f => {
     const lab = document.createElement('label');
     lab.className = 'fld';
@@ -2111,8 +2195,16 @@ function renderConfig() {
       inp.addEventListener('input', () => { n.config[f.key] = inp.value; markEdited(); });
       lab.appendChild(inp);
     }
-    panel.appendChild(lab);
+    if (f.hint) {
+      const h = document.createElement('div');
+      h.className = 'fld-hint';
+      h.textContent = f.hint[LANG] || f.hint.es || '';
+      lab.appendChild(h);
+    }
+    if (f.adv) { advBox.appendChild(lab); advCount++; }
+    else panel.appendChild(lab);
   });
+  if (advCount) panel.appendChild(advBox);
   const row = document.createElement('div');
   row.className = 'cfg-actions';
   const dup = document.createElement('button');

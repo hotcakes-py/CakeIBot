@@ -1061,6 +1061,37 @@ html.anim-off *, html.anim-off *::before, html.anim-off *::after {
   transition: none !important;
 }
 
+/* ---------- ayudas de campos + avanzado colapsable ---------- */
+.fld-hint { font-size: 11px; color: #777; letter-spacing: .3px; line-height: 1.5; margin-top: -4px; }
+details.cfg-adv {
+  border: 1px dashed rgba(255,255,255,.25); border-radius: 14px;
+  padding: 10px 12px; margin-top: 4px;
+}
+.cfg-adv summary {
+  cursor: pointer; font-size: 12px; letter-spacing: 1px; color: #999;
+  user-select: none;
+}
+.cfg-adv summary:hover { color: #fff; }
+.cfg-adv .fld { margin-top: 12px; }
+.cfg-adv .fld:first-of-type { margin-top: 12px; }
+
+/* ---------- plantillas del dashboard ---------- */
+.tpl-title { font-size: 13px; font-weight: 400; letter-spacing: 2px; color: #888; margin: 22px 0 10px; }
+.tpl-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+.tpl-card {
+  font: inherit; color: #fff; text-align: left; cursor: pointer;
+  border: 1px dashed rgba(255,255,255,.6); border-radius: 26px;
+  padding: 20px; background: linear-gradient(160deg, rgba(26,26,26,.94), rgba(8,8,8,.92));
+  box-shadow: 0 0 10px rgba(255,255,255,.25), inset 0 1px 0 rgba(255,255,255,.2);
+  display: flex; flex-direction: column; gap: 6px;
+  transition: transform .25s, box-shadow .25s;
+  animation: cardIn .5s ease both;
+}
+.tpl-card:hover { transform: translateY(-4px); box-shadow: 0 0 20px rgba(255,255,255,.6); }
+.tpl-card .tpl-ico { font-size: 26px; }
+.tpl-card strong { font-size: 15px; font-weight: 550; }
+.tpl-card span { font-size: 12px; color: #888; line-height: 1.5; }
+
 /* ---------- correcciones de layout: fluido + sin desbordes ---------- */
 /* el editor ocupa todo el ancho disponible (al maximizar crece con la ventana) */
 .editor { width: 100%; max-width: none; }
