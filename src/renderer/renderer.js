@@ -265,9 +265,18 @@ const fillSlashPY = (opts, withSub) => (e) => opts.reduce((acc, o) => {
   return `${acc}.replace('{${o.name}}', ${v})`;
 }, `${e}.replace('{autor}', interaction.user.mention).replace('{servidor}', interaction.guild.name if interaction.guild else '').replace('{canal}', interaction.channel.mention if interaction.channel else '').replace('{miembros}', str(interaction.guild.member_count if interaction.guild else ''))${withSub ? `.replace('{subcomando}', _sub).replace('{grupo}', _grp)` : ''}`);
 // Opciones de slash: líneas "nombre | tipo | descripción" (tipos: texto, numero, entero, usuario, canal)
+// Si el nombre claramente es una persona (usuario, user…) y el tipo quedó en texto, se entiende usuario
+const USER_NAME_KEYS = ['usuario', 'user', 'member', 'miembro', 'mencion', 'mencionado', 'mention', 'target', 'objetivo', 'persona', 'sujeto'];
+const inferSlashType = (raw, rawType) => {
+  const t = normSlashType(rawType || 'texto');
+  if (t !== 'texto') return t;
+  const nm = normKey(raw).replace(/[0-9]+$/g, '');
+  if (USER_NAME_KEYS.some(a => normKey(a) === nm)) return 'usuario';
+  return t;
+};
 const parseSlashOpts = (txt) => String(txt || '').split('\n')
   .map(l => l.split('|').map(s => s.trim())).filter(p => p[0]).slice(0, 5)
-  .map(p => ({ raw: p[0], type: normSlashType(p[1] || 'texto'), desc: (p[2] || p[0]).slice(0, 100) }));
+  .map(p => ({ raw: p[0], type: inferSlashType(p[0], p[1]), desc: (p[2] || p[0]).slice(0, 100) }));
 const slashOptJS = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32) || 'op';
 // nombre de variable JS seguro para una opción (evita guiones: _opt_foo-bar no compila)
 const jsOptVar = (name) => '_opt_' + String(name).replace(/[^a-zA-Z0-9_$]/g, '_');
@@ -309,7 +318,7 @@ const parseSubOpts = (txt) => String(txt || '').split('\n').map(l => {
   const sub = slashOptJS(l.slice(0, eq));
   const p = l.slice(eq + 1).split('|').map(s => s.trim());
   if (!sub || !p[0]) return null;
-  return { sub, raw: p[0], type: normSlashType(p[1] || 'texto'), desc: (p[2] || p[0]).slice(0, 100) };
+  return { sub, raw: p[0], type: inferSlashType(p[0], p[1]), desc: (p[2] || p[0]).slice(0, 100) };
 }).filter(Boolean).slice(0, 60);
 // Autocomplete: "opcion = valor1, valor2, valor3"
 const parseAC = (txt) => String(txt || '').split('\n').map(l => {
@@ -734,6 +743,7 @@ client.on('messageCreate', async (m) => {
       // El objetivo puede ser el nombre del dato (ej. "usuario"), "mencionado" (= primero) o "autor"
       const pickUser = (objetivo) => {
         const v = String(objetivo || '').trim();
+        if (!v) return userOpts[0] || null;
         return userOpts.find(o => o.name === slashOptJS(v)) || (isMenc(objetivo) ? userOpts[0] : null);
       };
       const mJSfor = (objetivo) => {
@@ -742,6 +752,7 @@ client.on('messageCreate', async (m) => {
       };
       const wantUserFor = (objetivo) => {
         const v = String(objetivo || '').trim();
+        if (!v) return userOpts.length > 0;
         return userOpts.some(o => o.name === slashOptJS(v)) || isMenc(objetivo);
       };
       const actCode = (acts || []).map(a => a.mod.actJS(a.node.config, slashCtx(a.aidx, mJSfor(a.node.config.objetivo), null, null, wantUserFor(a.node.config.objetivo)))).join('\n');
@@ -785,6 +796,7 @@ async def _ac_${k0}_${k}(interaction: discord.Interaction, current: str):
         const userOpts = opts.filter(o => o.type === 'discord.Member');
         const pickUser = (objetivo) => {
           const v = String(objetivo || '').trim();
+          if (!v) return userOpts[0] || null;
           return userOpts.find(o => o.name === slashOptPY(v)) || (isMenc(objetivo) ? userOpts[0] : null);
         };
         const mPYfor = (objetivo) => {
@@ -793,6 +805,7 @@ async def _ac_${k0}_${k}(interaction: discord.Interaction, current: str):
         };
         const wantUserFor = (objetivo) => {
           const v = String(objetivo || '').trim();
+          if (!v) return userOpts.length > 0;
           return userOpts.some(o => o.name === slashOptPY(v)) || isMenc(objetivo);
         };
         const actCode = (acts || []).map(a => indentPy(a.mod.actPY(a.node.config, { ...slashCtx(a.aidx, null, mPYfor(a.node.config.objetivo), fill), wantUser: wantUserFor(a.node.config.objetivo), sendPYL: sendP }))).join('\n');
