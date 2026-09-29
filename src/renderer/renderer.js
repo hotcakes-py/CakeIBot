@@ -53,7 +53,8 @@ const STR = {
     addNTitle: 'Añadir nodo',
     advTitle: 'Opciones avanzadas (opcional)',
     tplTitle: 'O empieza con una plantilla',
-    tplDone: 'Plantilla lista. Ponle tu token arriba para encenderlo.'
+    tplDone: 'Plantilla lista. Ponle tu token arriba para encenderlo.',
+    warnNoUser: '⚠ Este bloque no va a encontrar a nadie: el comando no tiene ningún dato tipo «usuario». Agrégalo en «¿Qué datos pide?».'
   },
   en: {
     hello: 'Hello!', stackTitle: 'Choose a language to continue',
@@ -105,7 +106,8 @@ const STR = {
     addNTitle: 'Add node',
     advTitle: 'Advanced options (optional)',
     tplTitle: 'Or start with a template',
-    tplDone: 'Template ready. Add your token above to start it.'
+    tplDone: 'Template ready. Add your token above to start it.',
+    warnNoUser: '⚠ This block will not find anyone: the command has no «usuario»-type data. Add it under «What info does it ask for?».'
   }
 };
 let LANG = 'es';
@@ -267,7 +269,7 @@ const fillSlashPY = (opts, withSub) => (e) => opts.reduce((acc, o) => {
 // Opciones de slash: líneas "nombre | tipo | descripción" (tipos: texto, numero, entero, usuario, canal)
 const parseSlashOpts = (txt) => String(txt || '').split('\n')
   .map(l => l.split('|').map(s => s.trim())).filter(p => p[0]).slice(0, 5)
-  .map(p => ({ raw: p[0], type: String(p[1] || 'texto').toLowerCase(), desc: (p[2] || p[0]).slice(0, 100) }));
+  .map(p => ({ raw: p[0], type: normSlashType(p[1] || 'texto'), desc: (p[2] || p[0]).slice(0, 100) }));
 const slashOptJS = (raw) => String(raw).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32) || 'op';
 // nombre de variable JS seguro para una opción (evita guiones: _opt_foo-bar no compila)
 const jsOptVar = (name) => '_opt_' + String(name).replace(/[^a-zA-Z0-9_$]/g, '_');
@@ -278,6 +280,20 @@ const slashOptPY = (raw) => {
 };
 const SLASH_TYPES_JS = { texto: 3, numero: 10, entero: 4, usuario: 6, canal: 7 };
 const SLASH_TYPES_PY = { texto: 'str', numero: 'float', entero: 'int', usuario: 'discord.Member', canal: 'discord.TextChannel' };
+// Alias de tipos para no confundirse (user, miembro, mención… valen como usuario)
+const SLASH_TYPE_ALIAS = {
+  texto: ['texto', 'text', 'string', 'str', 'palabra'],
+  numero: ['numero', 'number', 'num', 'decimal'],
+  entero: ['entero', 'int', 'integer'],
+  usuario: ['usuario', 'user', 'member', 'miembro', 'mencion', 'mencionado', 'mention', 'objetivo', 'target', 'sujeto', 'persona'],
+  canal: ['canal', 'channel']
+};
+const normSlashType = (t) => {
+  const k = normKey(t);
+  for (const canon of Object.keys(SLASH_TYPE_ALIAS))
+    if (SLASH_TYPE_ALIAS[canon].some(a => normKey(a) === k)) return canon;
+  return 'texto';
+};
 // ---------- subcomandos, grupos, autocomplete, permisos y cooldown ----------
 // Subcomandos: "sub | descripción"  o  "grupo/sub | descripción"
 const parseSlashSubs = (txt) => String(txt || '').split('\n')
@@ -295,7 +311,7 @@ const parseSubOpts = (txt) => String(txt || '').split('\n').map(l => {
   const sub = slashOptJS(l.slice(0, eq));
   const p = l.slice(eq + 1).split('|').map(s => s.trim());
   if (!sub || !p[0]) return null;
-  return { sub, raw: p[0], type: String(p[1] || 'texto').toLowerCase(), desc: (p[2] || p[0]).slice(0, 100) };
+  return { sub, raw: p[0], type: normSlashType(p[1] || 'texto'), desc: (p[2] || p[0]).slice(0, 100) };
 }).filter(Boolean).slice(0, 60);
 // Autocomplete: "opcion = valor1, valor2, valor3"
 const parseAC = (txt) => String(txt || '').split('\n').map(l => {
@@ -388,6 +404,8 @@ const CHAIN_MSG = ['responder', 'prefijo', 'slash'];
 const CHAIN_JOIN = ['bienvenida', 'despedida'];
 // "objetivo" de una acción: autor (quien ejecuta) o mencionado
 const isMenc = (v) => /mencion|mention|@/.test(String(v || '').toLowerCase());
+// Aviso cuando el comando no trae ningún dato tipo usuario (el bot lo diría en Discord)
+const noOptMsg = () => L('El comando no trae ningún «usuario». Agrégalo como dato tipo usuario y enciende de nuevo.', 'The command carries no «usuario» data. Add it as a usuario-type option and restart.');
 // Acción de moderación JS (kick/ban/timeout). doIt(tm) = línea de acción.
 const modActionJS = (id, c, C, perm, doIt, icon, doneWord) => {
   const T = C.tag;
@@ -401,7 +419,7 @@ const modActionJS = (id, c, C, perm, doIt, icon, doneWord) => {
   } catch (e) { console.error('${id}:', e.message); }`;
   }
   const tgt = isMenc(c.objetivo) ? C.mencJS : C.autorJS;
-  if (!tgt) return `  try { await ${C.sendJS(J(noTgt))}; } catch (_) {}`;
+  if (!tgt) return `  try { await ${C.sendJS(J(noOptMsg()))}; } catch (_) {}`;
   return `  try {
     const _tm_${T} = ${tgt};
     if (!_tm_${T}) { await ${C.sendJS(J(noTgt))}; }
@@ -419,7 +437,7 @@ const modActionPY = (id, c, C, perm, doIt, icon, doneWord) => {
     return `try:\n    await ${doIt('member')}\n    print('${icon} ${id} ok')\nexcept Exception as e:\n    print('${id}:', e)`;
   }
   const tgt = isMenc(c.objetivo) ? C.mencPY : C.autorPY;
-  if (!tgt) return C.sendPYL(J(noTgt)).join('\n');
+  if (!tgt) return C.sendPYL(J(noOptMsg())).join('\n');
   const put = (lines) => lines.join('\n');
   return put([
     `try:`,
@@ -453,7 +471,7 @@ const roleActionJS = (id, c, C, how) => {
   } catch (e) { console.error('${id}:', e.message); }`;
   }
   const tgt = isMenc(c.objetivo) ? C.mencJS : C.autorJS;
-  if (!tgt) return `  try { await ${C.sendJS(J(noTgt))}; } catch (_) {}`;
+  if (!tgt) return `  try { await ${C.sendJS(J(noOptMsg()))}; } catch (_) {}`;
   return `  try {
     const _tm_${T} = ${tgt};
     const _rl_${T} = ${find(C.guildJS)};
@@ -488,7 +506,7 @@ const roleActionPY = (id, c, C, how) => {
     ]);
   }
   const tgt = isMenc(c.objetivo) ? C.mencPY : C.autorPY;
-  if (!tgt) return C.sendPYL(J(noTgt)).join('\n');
+  if (!tgt) return C.sendPYL(J(noOptMsg())).join('\n');
   return put([
     `try:`,
     `    _tm_${T} = ${tgt}`,
@@ -656,7 +674,7 @@ client.on('messageCreate', async (m) => {
     schema: [
       { key: 'nombre', label: { es: 'Nombre del comando', en: 'Command name' }, def: 'hola', ph: 'kick', hint: { es: 'Minúsculas y sin espacios. En Discord sale como /nombre', en: 'Lowercase, no spaces. Shows as /name in Discord' } },
       { key: 'descripcion', label: { es: 'Descripción corta', en: 'Short description' }, def: 'Saluda', ph: 'Expulsa a alguien' },
-      { key: 'opciones', label: { es: '¿Qué datos pide? (opcional)', en: 'What info does it ask for? (optional)' }, def: '', multiline: true, ph: 'usuario | usuario | ¿A quién?', hint: { es: 'Una línea por dato: nombre | tipo | pregunta. Tipos: texto, numero, entero, usuario, canal', en: 'One line per item: name | type | question. Types: texto, numero, entero, usuario, canal' } },
+      { key: 'opciones', label: { es: '¿Qué datos pide? (opcional)', en: 'What info does it ask for? (optional)' }, def: '', multiline: true, ph: 'usuario | usuario | ¿A quién?', hint: { es: 'Una línea por dato: nombre | tipo | pregunta. Tipos: texto, numero, entero, usuario, canal. Para expulsar o banear incluye uno tipo usuario', en: 'One line per item: name | type | question. Types: texto, numero, entero, usuario, canal. To kick or ban include a usuario one' } },
       { key: 'subcomandos', label: { es: 'Subcomandos', en: 'Subcommands' }, def: '', multiline: true, adv: true, ph: 'ban | Banea a alguien', hint: { es: 'Una línea por subcomando: nombre | qué hace. Para grupos: grupo/nombre | qué hace', en: 'One line per subcommand: name | what it does. For groups: group/name | what it does' } },
       { key: 'subopciones', label: { es: 'Datos de cada subcomando', en: 'Each subcommand data' }, def: '', multiline: true, adv: true, ph: 'ban = usuario | usuario | ¿A quién?', hint: { es: 'Formato: subcomando = nombre | tipo | pregunta', en: 'Format: subcommand = name | type | question' } },
       { key: 'autocomplete', label: { es: 'Sugerencias al escribir', en: 'Suggestions while typing' }, def: '', multiline: true, adv: true, ph: 'color = rojo, azul, verde', hint: { es: 'Formato: dato = valor1, valor2. Discord muestra esas opciones', en: 'Format: item = value1, value2. Discord shows those options' } },
@@ -1776,6 +1794,26 @@ function chainOf(uidv) {
     .map(n => ({ node: n, mod: findMod(current.stack, n.modId), aidx: current.nodes.indexOf(n) }))
     .filter(x => x.mod && (modKind(x.mod) === 'action' || x.mod.id === 'embed'));
 }
+// Disparador que alimenta a un nodo (subiendo por los enlaces)
+function feedTrigger(uidv, seen = new Set()) {
+  if (!current || seen.has(uidv)) return null;
+  seen.add(uidv);
+  for (const e of current.edges.filter(x => x.b === uidv)) {
+    const s = current.nodes.find(x => x.uid === e.a);
+    if (!s) continue;
+    const m = findMod(current.stack, s.modId);
+    if (!m) continue;
+    if (modKind(m) !== 'action' && m.id !== 'embed') return s;
+    const up = feedTrigger(s.uid, seen);
+    if (up) return up;
+  }
+  return null;
+}
+// ¿El comando trae algún dato tipo usuario? (si no, expulsar/banear no encuentran a nadie)
+function triggerHasUser(nd) {
+  if (!nd || nd.modId !== 'slash') return true;
+  return slashOptAll(nd.config || {}).some(o => (SLASH_TYPES_JS[o.type] ?? 3) === 6);
+}
 // Primer embed conectado (para subtítulo y respuesta principal msg/slash)
 function connectedEmbedCfg(uidv) {
   const t = chainOf(uidv).find(x => x.mod.id === 'embed');
@@ -2138,6 +2176,13 @@ function renderConfig() {
     d.className = 'cfg-desc';
     d.textContent = mod.desc[LANG] || mod.desc.es;
     panel.appendChild(d);
+  }
+  if (mod && ['kick', 'ban', 'timeout', 'addrole', 'removerole'].includes(mod.id)
+      && isMenc(n.config && n.config.objetivo) && !triggerHasUser(feedTrigger(n.uid))) {
+    const w = document.createElement('div');
+    w.className = 'cfg-warn';
+    w.textContent = t('warnNoUser');
+    panel.appendChild(w);
   }
   // un snapshot de deshacer por sesión de foco (sin spam)
   let fieldSnap = null;
