@@ -416,7 +416,7 @@ const modActionJS = (id, c, C, perm, doIt, icon, doneWord) => {
     console.log('${icon} ${id} ok');
   } catch (e) { console.error('${id}:', e.message); }`;
   }
-  const tgt = isMenc(c.objetivo) ? C.mencJS : C.autorJS;
+  const tgt = (C.wantUser ?? isMenc(c.objetivo)) ? C.mencJS : C.autorJS;
   if (!tgt) return `  console.log('⚠ ${id}: ' + ${J(noOptMsg())});`;
   return `  try {
     const _tm_${T} = ${tgt};
@@ -434,7 +434,7 @@ const modActionPY = (id, c, C, perm, doIt, icon, doneWord) => {
     if (isMenc(c.objetivo)) return `print('⚠ ${id} omitido: aquí no hay mencionado, usa autor')`;
     return `try:\n    await ${doIt('member')}\n    print('${icon} ${id} ok')\nexcept Exception as e:\n    print('${id}:', e)`;
   }
-  const tgt = isMenc(c.objetivo) ? C.mencPY : C.autorPY;
+  const tgt = (C.wantUser ?? isMenc(c.objetivo)) ? C.mencPY : C.autorPY;
   if (!tgt) return `print('⚠ ${id}: ' + ${J(noOptMsg())})`;
   const put = (lines) => lines.join('\n');
   return put([
@@ -468,7 +468,7 @@ const roleActionJS = (id, c, C, how) => {
     else { await member.roles.${verb}(_rl_${T}); console.log('rol ${verb} ok'); }
   } catch (e) { console.error('${id}:', e.message); }`;
   }
-  const tgt = isMenc(c.objetivo) ? C.mencJS : C.autorJS;
+  const tgt = (C.wantUser ?? isMenc(c.objetivo)) ? C.mencJS : C.autorJS;
   if (!tgt) return `  console.log('⚠ ${id}: ' + ${J(noOptMsg())});`;
   return `  try {
     const _tm_${T} = ${tgt};
@@ -503,7 +503,7 @@ const roleActionPY = (id, c, C, how) => {
       `    print('${id}:', e)`
     ]);
   }
-  const tgt = isMenc(c.objetivo) ? C.mencPY : C.autorPY;
+  const tgt = (C.wantUser ?? isMenc(c.objetivo)) ? C.mencPY : C.autorPY;
   if (!tgt) return `print('⚠ ${id}: ' + ${J(noOptMsg())})`;
   return put([
     `try:`,
@@ -535,9 +535,9 @@ const msgCtxPY = (aidx) => ({
   autorPY: '(m.author if m.guild else None)', guildPY: 'm.guild', mePY: 'm.author',
   sendPYL: (p) => [`await m.reply(${p})`]
 });
-const slashCtx = (aidx, mJS, mPY, fillPY) => ({
+const slashCtx = (aidx, mJS, mPY, fillPY, wantUser) => ({
   t: 'slash', tag: 'a' + aidx,
-  mencJS: mJS, mencPY: mPY,
+  mencJS: mJS, mencPY: mPY, wantUser,
   autorJS: '(i.member || null)', autorPY: 'interaction.user',
   guildJS: 'i.guild', guildPY: 'interaction.guild', meJS: 'i.member', mePY: 'interaction.user',
   sendJS: (p) => `_send(${p})`,
@@ -730,9 +730,21 @@ client.on('messageCreate', async (m) => {
       const hasResp = String(c.respuesta || '').trim();
       const leg = emb ? `${jsEmbedDecl(emb, '  ', (e) => '_fill(' + e + ')')}\n  try { await _send({ embeds: [_eb] }); } catch (e) { console.error('slash:', e.message); }`
         : (hasResp ? `  try { await _send(_fill(${J(c.respuesta)})); } catch (e) { console.error('slash:', e.message); }` : '');
-      const uo = opts.find(o => (SLASH_TYPES_JS[o.type] ?? 3) === 6);
-      const mJS = uo ? `(i.options.getMember(${J(uo.name)}) || null)` : null;
-      const actCode = (acts || []).map(a => a.mod.actJS(a.node.config, slashCtx(a.aidx, mJS, null, null))).join('\n');
+      const userOpts = opts.filter(o => (SLASH_TYPES_JS[o.type] ?? 3) === 6);
+      // El objetivo puede ser el nombre del dato (ej. "usuario"), "mencionado" (= primero) o "autor"
+      const pickUser = (objetivo) => {
+        const v = String(objetivo || '').trim();
+        return userOpts.find(o => o.name === slashOptJS(v)) || (isMenc(objetivo) ? userOpts[0] : null);
+      };
+      const mJSfor = (objetivo) => {
+        const pick = pickUser(objetivo);
+        return pick ? `(i.options.getMember(${J(pick.name)}) || null)` : null;
+      };
+      const wantUserFor = (objetivo) => {
+        const v = String(objetivo || '').trim();
+        return userOpts.some(o => o.name === slashOptJS(v)) || isMenc(objetivo);
+      };
+      const actCode = (acts || []).map(a => a.mod.actJS(a.node.config, slashCtx(a.aidx, mJSfor(a.node.config.objetivo), null, null, wantUserFor(a.node.config.objetivo)))).join('\n');
       return `client.on('interactionCreate', async (i) => {
   if (!i.isChatInputCommand() || i.commandName !== ${J(n)}) return;
 ${subDef}${cdLine}${lines.join('\n')}${lines.length ? '\n' : ''}${sendDef}
@@ -770,9 +782,20 @@ async def _ac_${k0}_${k}(interaction: discord.Interaction, current: str):
         const hasResp = String(c.respuesta || '').trim();
         const leg = emb ? `${pyEmbedDecl(emb, '    ', fill)}\n    ${sendP('embed=eb').join('\n    ')}`
           : (hasResp ? [`    _out = ${fill(J(c.respuesta))}`, ...sendP('_out').map(l => `    ${l}`)].join('\n') : '');
-        const uo = opts.find(o => o.type === 'discord.Member');
-        const mPY = uo ? uo.name : null;
-        const actCode = (acts || []).map(a => indentPy(a.mod.actPY(a.node.config, { ...slashCtx(a.aidx, null, mPY, fill), sendPYL: sendP }))).join('\n');
+        const userOpts = opts.filter(o => o.type === 'discord.Member');
+        const pickUser = (objetivo) => {
+          const v = String(objetivo || '').trim();
+          return userOpts.find(o => o.name === slashOptPY(v)) || (isMenc(objetivo) ? userOpts[0] : null);
+        };
+        const mPYfor = (objetivo) => {
+          const pick = pickUser(objetivo);
+          return pick ? pick.name : null;
+        };
+        const wantUserFor = (objetivo) => {
+          const v = String(objetivo || '').trim();
+          return userOpts.some(o => o.name === slashOptPY(v)) || isMenc(objetivo);
+        };
+        const actCode = (acts || []).map(a => indentPy(a.mod.actPY(a.node.config, { ...slashCtx(a.aidx, null, mPYfor(a.node.config.objetivo), fill), wantUser: wantUserFor(a.node.config.objetivo), sendPYL: sendP }))).join('\n');
         const body = [
           ...(withSub ? [`    _sub = ${J(subName || '')}`, `    _grp = ${J(grpName || '')}`] : []),
           ...cdLines,
@@ -1126,7 +1149,7 @@ _anuncio_${i}.start()`;
     name: { es: 'Expulsar', en: 'Kick' },
     desc: { es: 'Expulsa al objetivo (/kick con flujo).', en: 'Kicks the target (flow /kick).' },
     schema: [
-      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'mencionado', ph: 'mencionado', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'objetivo', label: { es: '¿A quién? (mencionado, autor o variable)', en: 'Who? (mencionado, autor or variable)' }, def: 'mencionado', ph: 'usuario', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
       { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '', hint: { es: 'Si lo dejas vacío no pone nada', en: 'If empty it says nothing' } }
     ],
     actJS(c, C) { return modActionJS('kick', c, C, 'KickMembers', (tm) => c.motivo ? `${tm}.kick(${J(c.motivo)})` : `${tm}.kick()`, '👢', L('expulsado', 'kicked')); },
@@ -1137,7 +1160,7 @@ _anuncio_${i}.start()`;
     name: { es: 'Banear', en: 'Ban' },
     desc: { es: 'Banea al objetivo.', en: 'Bans the target.' },
     schema: [
-      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'mencionado', ph: 'mencionado', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'objetivo', label: { es: '¿A quién? (mencionado, autor o variable)', en: 'Who? (mencionado, autor or variable)' }, def: 'mencionado', ph: 'usuario', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
       { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '', hint: { es: 'Si lo dejas vacío no pone nada', en: 'If empty it says nothing' } },
       { key: 'borrar', label: { es: 'Borrar mensajes viejos (días)', en: 'Delete old messages (days)' }, def: '1', adv: true, ph: '1', hint: { es: 'Del 0 al 7. 0 = no borra nada', en: 'From 0 to 7. 0 = deletes nothing' } }
     ],
@@ -1161,7 +1184,7 @@ _anuncio_${i}.start()`;
     name: { es: 'Aislar', en: 'Timeout' },
     desc: { es: 'Aísla al objetivo X minutos.', en: 'Times out the target for X minutes.' },
     schema: [
-      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'mencionado', ph: 'mencionado', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'objetivo', label: { es: '¿A quién? (mencionado, autor o variable)', en: 'Who? (mencionado, autor or variable)' }, def: 'mencionado', ph: 'usuario', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
       { key: 'minutos', label: { es: '¿Cuántos minutos?', en: 'How many minutes?' }, def: '10', ph: '10' },
       { key: 'motivo', label: { es: 'Motivo (opcional)', en: 'Reason (optional)' }, def: '', hint: { es: 'Si lo dejas vacío no pone nada', en: 'If empty it says nothing' } }
     ],
@@ -1179,7 +1202,7 @@ _anuncio_${i}.start()`;
     name: { es: 'Dar rol', en: 'Add role' },
     desc: { es: 'Da un rol al objetivo.', en: 'Gives a role to the target.' },
     schema: [
-      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'autor', ph: 'autor', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'objetivo', label: { es: '¿A quién? (mencionado, autor o variable)', en: 'Who? (mencionado, autor or variable)' }, def: 'autor', ph: 'autor', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
       { key: 'rol', label: { es: 'Nombre exacto del rol', en: 'Exact role name' }, def: '', ph: 'Miembro', hint: { es: 'Tiene que existir en tu servidor con ese mismo nombre', en: 'It must exist in your server with that exact name' } }
     ],
     actJS(c, C) { return roleActionJS('addrole', c, C, 'add'); },
@@ -1190,7 +1213,7 @@ _anuncio_${i}.start()`;
     name: { es: 'Quitar rol', en: 'Remove role' },
     desc: { es: 'Quita un rol al objetivo.', en: 'Removes a role from the target.' },
     schema: [
-      { key: 'objetivo', label: { es: '¿A quién?', en: 'Who?' }, def: 'autor', ph: 'autor', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
+      { key: 'objetivo', label: { es: '¿A quién? (mencionado, autor o variable)', en: 'Who? (mencionado, autor or variable)' }, def: 'autor', ph: 'autor', hint: { es: 'Escribe mencionado para el usuario del comando, o autor para el que lo escribió', en: 'Write mencionado for the command user, or autor for who wrote it' } },
       { key: 'rol', label: { es: 'Nombre exacto del rol', en: 'Exact role name' }, def: '', ph: 'Miembro', hint: { es: 'Tiene que existir en tu servidor con ese mismo nombre', en: 'It must exist in your server with that exact name' } }
     ],
     actJS(c, C) { return roleActionJS('removerole', c, C, 'remove'); },
