@@ -54,7 +54,6 @@ const STR = {
     advTitle: 'Opciones avanzadas (opcional)',
     tplTitle: 'O empieza con una plantilla',
     tplDone: 'Plantilla lista. Ponle tu token arriba para encenderlo.',
-    warnNoUser: '⚠ Este bloque no va a encontrar a nadie: el comando no tiene ningún dato tipo «usuario». Agrégalo en «¿Qué datos pide?».'
   },
   en: {
     hello: 'Hello!', stackTitle: 'Choose a language to continue',
@@ -107,7 +106,6 @@ const STR = {
     advTitle: 'Advanced options (optional)',
     tplTitle: 'Or start with a template',
     tplDone: 'Template ready. Add your token above to start it.',
-    warnNoUser: '⚠ This block will not find anyone: the command has no «usuario»-type data. Add it under «What info does it ask for?».'
   }
 };
 let LANG = 'es';
@@ -419,13 +417,13 @@ const modActionJS = (id, c, C, perm, doIt, icon, doneWord) => {
   } catch (e) { console.error('${id}:', e.message); }`;
   }
   const tgt = isMenc(c.objetivo) ? C.mencJS : C.autorJS;
-  if (!tgt) return `  try { await ${C.sendJS(J(noOptMsg()))}; } catch (_) {}`;
+  if (!tgt) return `  console.log('⚠ ${id}: ' + ${J(noOptMsg())});`;
   return `  try {
     const _tm_${T} = ${tgt};
     if (!_tm_${T}) { await ${C.sendJS(J(noTgt))}; }
     else if (!(${C.meJS} && ${C.meJS}.permissions.has('${perm}'))) { await ${C.sendJS(J(noPerm))}; }
     else { await ${doIt(`_tm_${T}`)}; await ${C.sendJS(`'${icon} ' + '<@' + _tm_${T}.id + '>' + ' ${doneWord}'`)}; }
-  } catch (e) { console.error('${id}:', e.message); try { await ${C.sendJS(`'⚠ ' + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + String((e && e.message) || e)`)}; } catch (_) {} }`;
+  } catch (e) { console.error('${id}:', e.message); }`;
 };
 // Acción de moderación PY
 const modActionPY = (id, c, C, perm, doIt, icon, doneWord) => {
@@ -437,7 +435,7 @@ const modActionPY = (id, c, C, perm, doIt, icon, doneWord) => {
     return `try:\n    await ${doIt('member')}\n    print('${icon} ${id} ok')\nexcept Exception as e:\n    print('${id}:', e)`;
   }
   const tgt = isMenc(c.objetivo) ? C.mencPY : C.autorPY;
-  if (!tgt) return C.sendPYL(J(noOptMsg())).join('\n');
+  if (!tgt) return `print('⚠ ${id}: ' + ${J(noOptMsg())})`;
   const put = (lines) => lines.join('\n');
   return put([
     `try:`,
@@ -451,10 +449,6 @@ const modActionPY = (id, c, C, perm, doIt, icon, doneWord) => {
     ...C.sendPYL(`${J(icon + ' ')} + _tm_${T}.mention + ${J(' ' + doneWord)}`).map(l => `        ${l}`),
     `except Exception as e:`,
     `    print('${id}:', e)`,
-    `    try:`,
-    ...C.sendPYL(`${J('⚠ ')} + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + str(e)`).map(l => `        ${l}`),
-    `    except Exception:`,
-    `        pass`
   ]);
 };
 // Acción de rol JS
@@ -475,7 +469,7 @@ const roleActionJS = (id, c, C, how) => {
   } catch (e) { console.error('${id}:', e.message); }`;
   }
   const tgt = isMenc(c.objetivo) ? C.mencJS : C.autorJS;
-  if (!tgt) return `  try { await ${C.sendJS(J(noOptMsg()))}; } catch (_) {}`;
+  if (!tgt) return `  console.log('⚠ ${id}: ' + ${J(noOptMsg())});`;
   return `  try {
     const _tm_${T} = ${tgt};
     const _rl_${T} = ${find(C.guildJS)};
@@ -483,7 +477,7 @@ const roleActionJS = (id, c, C, how) => {
     else if (!(${C.meJS} && ${C.meJS}.permissions.has('ManageRoles'))) { await ${C.sendJS(J(noPerm))}; }
     else if (!_rl_${T}) { await ${C.sendJS(J(noRol))}; }
     else { await _tm_${T}.roles.${verb}(_rl_${T}); await ${C.sendJS(`'✅ ' + '<@' + _tm_${T}.id + '>'`)}; }
-  } catch (e) { console.error('${id}:', e.message); try { await ${C.sendJS(`'⚠ ' + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + String((e && e.message) || e)`)}; } catch (_) {} }`;
+  } catch (e) { console.error('${id}:', e.message); }`;
 };
 // Acción de rol PY
 const roleActionPY = (id, c, C, how) => {
@@ -510,7 +504,7 @@ const roleActionPY = (id, c, C, how) => {
     ]);
   }
   const tgt = isMenc(c.objetivo) ? C.mencPY : C.autorPY;
-  if (!tgt) return C.sendPYL(J(noOptMsg())).join('\n');
+  if (!tgt) return `print('⚠ ${id}: ' + ${J(noOptMsg())})`;
   return put([
     `try:`,
     `    _tm_${T} = ${tgt}`,
@@ -526,10 +520,6 @@ const roleActionPY = (id, c, C, how) => {
     ...C.sendPYL(`'✅ ' + _tm_${T}.mention`).map(l => `        ${l}`),
     `except Exception as e:`,
     `    print('${id}:', e)`,
-    `    try:`,
-    ...C.sendPYL(`${J('⚠ ')} + ${J(L('No pude hacerlo: ', 'Could not do it: '))} + str(e)`).map(l => `        ${l}`),
-    `    except Exception:`,
-    `        pass`
   ]);
 };
 // Contextos para acciones (disparador → acción)
@@ -1802,26 +1792,6 @@ function chainOf(uidv) {
     .map(n => ({ node: n, mod: findMod(current.stack, n.modId), aidx: current.nodes.indexOf(n) }))
     .filter(x => x.mod && (modKind(x.mod) === 'action' || x.mod.id === 'embed'));
 }
-// Disparador que alimenta a un nodo (subiendo por los enlaces)
-function feedTrigger(uidv, seen = new Set()) {
-  if (!current || seen.has(uidv)) return null;
-  seen.add(uidv);
-  for (const e of current.edges.filter(x => x.b === uidv)) {
-    const s = current.nodes.find(x => x.uid === e.a);
-    if (!s) continue;
-    const m = findMod(current.stack, s.modId);
-    if (!m) continue;
-    if (modKind(m) !== 'action' && m.id !== 'embed') return s;
-    const up = feedTrigger(s.uid, seen);
-    if (up) return up;
-  }
-  return null;
-}
-// ¿El comando trae algún dato tipo usuario? (si no, expulsar/banear no encuentran a nadie)
-function triggerHasUser(nd) {
-  if (!nd || nd.modId !== 'slash') return true;
-  return slashOptAll(nd.config || {}).some(o => (SLASH_TYPES_JS[o.type] ?? 3) === 6);
-}
 // Primer embed conectado (para subtítulo y respuesta principal msg/slash)
 function connectedEmbedCfg(uidv) {
   const t = chainOf(uidv).find(x => x.mod.id === 'embed');
@@ -2185,13 +2155,6 @@ function renderConfig() {
     d.textContent = mod.desc[LANG] || mod.desc.es;
     panel.appendChild(d);
   }
-  if (mod && ['kick', 'ban', 'timeout', 'addrole', 'removerole'].includes(mod.id)
-      && isMenc(n.config && n.config.objetivo) && !triggerHasUser(feedTrigger(n.uid))) {
-    const w = document.createElement('div');
-    w.className = 'cfg-warn';
-    w.textContent = t('warnNoUser');
-    panel.appendChild(w);
-  }
   // un snapshot de deshacer por sesión de foco (sin spam)
   let fieldSnap = null;
   const onFocus = () => { fieldSnap = snap(); };
@@ -2247,12 +2210,6 @@ function renderConfig() {
     } else {
       inp.addEventListener('input', () => { n.config[f.key] = inp.value; markEdited(); });
       lab.appendChild(inp);
-    }
-    if (f.hint) {
-      const h = document.createElement('div');
-      h.className = 'fld-hint';
-      h.textContent = f.hint[LANG] || f.hint.es || '';
-      lab.appendChild(h);
     }
     if (f.adv) { advBox.appendChild(lab); advCount++; }
     else panel.appendChild(lab);
