@@ -1,7 +1,7 @@
 {
   "name": "cakeibot-panel",
   "version": "1.0.0",
-  "description": "Panel minimalista blanco y negro en Electron con selector de idioma",
+  "description": "Constructor de bots por flujos",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
